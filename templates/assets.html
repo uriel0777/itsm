@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assets | SaaS Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .profile-dropdown {
+            position: relative;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background: var(--bg-color);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius-md);
+            width: 100%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            padding: 0.5rem 0;
+            margin-bottom: 0.5rem;
+            z-index: 1000;
+        }
+        .dropdown-menu.active { display: block; }
+        .dropdown-item {
+            display: block;
+            padding: 0.75rem 1rem;
+            color: var(--text-main);
+            text-decoration: none;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        .dropdown-item:hover { background: rgba(100,100,100,0.1); }
+        .dropdown-item i { width: 20px; color: var(--text-muted); margin-right: 0.5rem; }
+    </style>
+</head>
+<body class="theme-wrapper">
+    <div class="background-effects"><div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div></div>
+
+    <script>
+        window.CURRENT_USER = {
+            id: {{ user.id }},
+            email: "{{ user.email }}",
+            role: "{{ user.role }}",
+            name: "{{ user.name or '' }}"
+        };
+    </script>
+
+    <div class="app-container glassmorphism">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="100" height="100" rx="20" fill="#0072CE"/>
+                    <path d="M25 50L50 25L75 50L50 75L25 50Z" fill="white"/>
+                </svg>
+                <span>Leumi ITSM</span>
+            </div>
+            <nav>
+                <a href="/"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
+                <a href="/analytics"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
+                <a href="/assets" class="active"><i class="fa-solid fa-server"></i> Assets</a>
+            </nav>
+            <div class="user-profile profile-dropdown" id="profileToggle" style="cursor: pointer; position:relative;">
+                <div class="avatar"><img src="https://ui-avatars.com/api/?name={{ user.name or user.email }}&background=0072CE&color=fff" alt="Avatar"></div>
+                <div class="info"><span class="name">{{ user.name or user.email.split('@')[0] }}</span><span class="role">{{ user.role }}</span></div>
+                <i class="fa-solid fa-chevron-up" style="color:var(--text-muted)"></i>
+                
+                <div class="dropdown-menu" id="profileMenu">
+                    {% if user.role == 'Admin' %}
+                    <a href="/settings" class="dropdown-item"><i class="fa-solid fa-gear"></i> Settings</a>
+                    {% endif %}
+                    <a href="/logout" class="dropdown-item" style="color:var(--accent-red)"><i class="fa-solid fa-arrow-right-from-bracket" style="color:var(--accent-red)"></i> Logout</a>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <h2>Assets & Servers</h2>
+                <div class="actions">
+                    <button class="icon-btn" id="themeToggleBtn"><i class="fa-solid fa-moon"></i></button>
+                    {% if user.role == 'Admin' %}
+                    <button class="primary-btn" id="newAssetBtn"><i class="fa-solid fa-plus"></i> Add Server</button>
+                    {% endif %}
+                </div>
+            </header>
+
+            <div class="tickets-section">
+                <div class="table-container">
+                    <table class="tickets-table">
+                        <thead>
+                            <tr>
+                                <th>Asset Name</th>
+                                <th>Type</th>
+                                <th>Target (IP/URL)</th>
+                                <th>Description</th>
+                                <th>Connection</th>
+                                {% if user.role == 'Admin' %}<th>Actions</th>{% endif %}
+                            </tr>
+                        </thead>
+                        <tbody id="assetsList">
+                            <!-- Populated with JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Asset Modal -->
+    <div class="modal-overlay" id="assetModal">
+        <div class="modal glassmorphism">
+            <div class="modal-header">
+                <h3>Add New Server</h3>
+                <button class="close-btn" id="closeAssetModal"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="assetForm">
+                    <div class="form-group">
+                        <label>Server Name</label>
+                        <input type="text" id="assetName" required placeholder="e.g. DB_Production_1">
+                    </div>
+                    <div class="form-group">
+                        <label>Target (IP or URL or UNC Path)</label>
+                        <input type="text" id="assetIp" required placeholder="192.168.1.10">
+                    </div>
+                    <div class="form-group">
+                        <label>Asset Type</label>
+                        <select id="assetType" required>
+                            <option value="RDP">RDP (Remote Desktop)</option>
+                            <option value="URL">URL / Web Service</option>
+                            <option value="SMB">SMB Network Share</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Description (Optional)</label>
+                        <input type="text" id="assetDesc" placeholder="Main database server">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="cancel-btn" id="cancelAssetModal">Cancel</button>
+                        <button type="submit" class="primary-btn">Save Asset</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Theme Toggle
+            if (localStorage.getItem('theme') === 'light') document.body.classList.add('light-theme');
+            document.getElementById('themeToggleBtn').addEventListener('click', () => {
+                document.body.classList.toggle('light-theme');
+                localStorage.setItem('theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
+            });
+
+            // Profile Dropdown
+            const profileToggle = document.getElementById('profileToggle');
+            const profileMenu = document.getElementById('profileMenu');
+            profileToggle.addEventListener('click', (e) => {
+                // Prevent routing logic if clicking inner links
+                if(e.target.closest('.dropdown-item')) return;
+                profileMenu.classList.toggle('active');
+            });
+            document.addEventListener('click', (e) => {
+                if(!profileToggle.contains(e.target)) profileMenu.classList.remove('active');
+            });
+
+            // Load Assets
+            async function loadAssets() {
+                const res = await fetch('/api/assets');
+                const assets = await res.json();
+                document.getElementById('assetsList').innerHTML = assets.map(a => `
+                    <tr>
+                        <td><strong>${a.name}</strong></td>
+                        <td><span class="badge" style="background:rgba(100,100,100,0.1); border:1px solid var(--glass-border)">${a.asset_type || 'RDP'}</span></td>
+                        <td>${a.ip_target}</td>
+                        <td style="color:var(--text-muted)">${a.description || '-'}</td>
+                        <td>
+                            ${a.asset_type === 'URL' 
+                                ? '<a href="' + a.ip_target + '" target="_blank" class="badge status-New" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-link"></i> Open Link</a>' 
+                                : a.asset_type === 'SMB' 
+                                ? '<a href="smb://' + a.ip_target.replace(/\\\\/g, '/') + '" class="badge status-In-Progress" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-folder"></i> Open Share</a>' 
+                                : '<a href="rdp://' + a.ip_target + '" class="badge status-New" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-desktop"></i> Connect RDP</a>'
+                            }
+                        </td>
+                        ${window.CURRENT_USER.role === 'Admin' ? '<td><button class="action-btn" onclick="deleteAsset(' + a.id + ')"><i class="fa-solid fa-trash" style="color:var(--accent-red)"></i></button></td>' : ''}
+                    </tr>
+                `).join('');
+            }
+            loadAssets();
+
+            // Admin Actions
+            if(window.CURRENT_USER.role === 'Admin') {
+                const modal = document.getElementById('assetModal');
+                document.getElementById('newAssetBtn').addEventListener('click', () => modal.classList.add('active'));
+                document.getElementById('closeAssetModal').addEventListener('click', () => modal.classList.remove('active'));
+                document.getElementById('cancelAssetModal').addEventListener('click', () => modal.classList.remove('active'));
+                
+                document.getElementById('assetForm').addEventListener('submit', async(e) => {
+                    e.preventDefault();
+                    await fetch('/api/assets', {
+                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({
+                            name: document.getElementById('assetName').value,
+                            ip_target: document.getElementById('assetIp').value,
+                            description: document.getElementById('assetDesc').value,
+                            asset_type: document.getElementById('assetType').value
+                        })
+                    });
+                    modal.classList.remove('active');
+                    document.getElementById('assetForm').reset();
+                    loadAssets();
+                });
+
+                window.deleteAsset = async (id) => {
+                    if(confirm("Delete this server?")) {
+                        await fetch(`/api/assets/${id}`, {method:'DELETE'});
+                        loadAssets();
+                    }
+                };
+            }
+        });
+    </script>
+</body>
+</html>

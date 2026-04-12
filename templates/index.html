@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaaS Admin - Leumi ITSM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .profile-dropdown { position: relative; }
+        .dropdown-menu {
+            display: none; position: absolute; bottom: 100%; left: 0; background: var(--bg-color);
+            border: 1px solid var(--glass-border); border-radius: var(--border-radius-md); width: 100%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); padding: 0.5rem 0; margin-bottom: 0.5rem; z-index: 1000;
+        }
+        .dropdown-menu.active { display: block; }
+        .dropdown-item { display: block; padding: 0.75rem 1rem; color: var(--text-main); text-decoration: none; transition: background 0.2s; cursor: pointer; }
+        .dropdown-item:hover { background: rgba(100,100,100,0.1); }
+        .dropdown-item i { width: 20px; color: var(--text-muted); margin-right: 0.5rem; }
+    </style>
+</head>
+<body class="theme-wrapper">
+    <div class="background-effects"><div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div></div>
+
+    <script>
+        window.CURRENT_USER = {id: {{ user.id }}, email: "{{ user.email }}", role: "{{ user.role }}", name: "{{ user.name or '' }}"};
+    </script>
+
+    <div class="app-container glassmorphism">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="100" height="100" rx="20" fill="#0072CE"/>
+                    <path d="M25 50L50 25L75 50L50 75L25 50Z" fill="white"/>
+                </svg>
+                <span>Leumi ITSM</span>
+            </div>
+            <nav>
+                <a href="/" class="active"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
+                <a href="/analytics"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
+                <a href="/assets"><i class="fa-solid fa-server"></i> Assets</a>
+                <a href="#" id="newTicketBtn"><i class="fa-solid fa-plus"></i> New Task</a>
+            </nav>
+            <div class="user-profile profile-dropdown" id="profileToggle" style="cursor: pointer; position:relative;">
+                <div class="avatar"><img src="https://ui-avatars.com/api/?name={{ user.name or user.email }}&background=0072CE&color=fff" alt="Avatar"></div>
+                <div class="info"><span class="name">{{ user.name or user.email.split('@')[0] }}</span><span class="role">{{ user.role }}</span></div>
+                <i class="fa-solid fa-chevron-up" style="color:var(--text-muted)"></i>
+                
+                <div class="dropdown-menu" id="profileMenu">
+                    {% if user.role == 'Admin' %}
+                    <a href="/settings" class="dropdown-item"><i class="fa-solid fa-gear"></i> Settings</a>
+                    {% endif %}
+                    <a href="/logout" class="dropdown-item" style="color:var(--accent-red)"><i class="fa-solid fa-arrow-right-from-bracket" style="color:var(--accent-red)"></i> Logout</a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="search-box">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" placeholder="Search tasks, tickets..." id="searchInput">
+                </div>
+                <div class="actions">
+                    <button class="icon-btn" id="themeToggleBtn"><i class="fa-solid fa-moon"></i></button>
+                    <button class="primary-btn" id="headerNewTicketBtn"><i class="fa-solid fa-plus"></i> Create Task</button>
+                </div>
+            </header>
+
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <div class="icon-wrapper blue"><i class="fa-solid fa-ticket"></i></div>
+                    <div class="details"><span class="label">Total Tasks</span><h3 id="statTotal">0</h3></div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon-wrapper orange"><i class="fa-solid fa-spinner"></i></div>
+                    <div class="details"><span class="label">In Progress</span><h3 id="statInProgress">0</h3></div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon-wrapper red"><i class="fa-solid fa-fire"></i></div>
+                    <div class="details"><span class="label">High Priority</span><h3 id="statHighPriority">0</h3></div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon-wrapper green"><i class="fa-solid fa-check"></i></div>
+                    <div class="details"><span class="label">Resolved</span><h3 id="statResolved">0</h3></div>
+                </div>
+            </div>
+
+            <div class="tickets-section">
+                <div class="section-header">
+                    <h2>Recent Tasks</h2>
+                    <div class="filters">
+                        <select id="filterTag"><option value="">All Tags</option></select>
+                        <select id="filterAssignee"><option value="">All Assignees</option></select>
+                        <select id="filterStatus">
+                            <option value="">All Statuses</option>
+                            <option value="New">New</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="tickets-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Title / Tags</th>
+                                <th>Type & Due Date</th>
+                                <th>Source</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Assignee</th>
+                                <th>SLA Track</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ticketsList"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Ticket Modal -->
+    <div class="modal-overlay" id="ticketModal">
+        <div class="modal glassmorphism">
+            <div class="modal-header">
+                <h3 id="modalTitle">Create New Task</h3>
+                <button class="close-btn closeModalBtn"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="ticketForm">
+                    <input type="hidden" id="ticketId">
+                    <div class="form-group"><label>Task Title</label><input type="text" id="title" required placeholder="Describe the task shortly"></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Task Type</label><select id="task_type" required><option value="Short-term">Short-term Task (Max 7 Days)</option><option value="Long-term">Long-term Project (Max 60 Days)</option></select></div>
+                        <div class="form-group"><label>Due Date</label><input type="date" id="due_date" required></div>
+                    </div>
+                    
+                    <div id="webhookSection" style="display:none; background:var(--glass-bg); padding: 1rem; border-radius:var(--border-radius-sm); margin-bottom:1.25rem; border:1px solid var(--accent-orange)">
+                        <h4 style="color:var(--accent-orange); margin-bottom: 0.5rem; font-size:0.95rem;"><i class="fa-solid fa-robot"></i> Automated Alert Payload</h4>
+                        <pre id="webhookPayload" style="font-size:0.75rem; overflow-x:auto; background:#0f172a; padding:0.75rem; border-radius:4px; margin-bottom:1rem; color:#a7f3d0; border:1px solid var(--glass-border);"></pre>
+                        
+                        <div id="runbookSection" style="display:none; border-top:1px solid var(--glass-border); padding-top:1rem;">
+                            <h4 style="color:var(--accent-blue); margin-bottom: 0.5rem; font-size:0.95rem;"><i class="fa-solid fa-book"></i> Recommended Runbook</h4>
+                            <div id="runbookGuide" style="font-size:0.85rem; margin-bottom:0.75rem; color:var(--text-main); white-space: pre-wrap;"></div>
+                            <div style="position:relative">
+                                <code id="runbookScript" style="display:block; background:#000; padding:0.75rem; border-radius:4px; font-family:monospace; color:#38bdf8; overflow-x:auto; white-space: pre-wrap; font-size:0.8rem"></code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group"><label>Detailed Description</label><textarea id="description" rows="3" placeholder="Add any details..."></textarea></div>
+                    <div class="form-group"><label>Select Tags</label><select id="tags" multiple style="height: 60px;"></select></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Priority</label><select id="priority"><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option><option value="Critical">Critical</option></select></div>
+                        <div class="form-group"><label>Assignee</label><select id="assignee"><option value="">Unassigned</option></select></div>
+                        <div class="form-group" id="statusGroup" style="display:none;"><label>Status</label><select id="status"><option value="New">New</option><option value="In Progress">In Progress</option><option value="Resolved">Resolved</option></select></div>
+                    </div>
+                    <div class="form-actions"><button type="button" class="cancel-btn closeModalBtn">Cancel</button><button type="submit" class="primary-btn">Save Task</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const profileToggle = document.getElementById('profileToggle');
+            const profileMenu = document.getElementById('profileMenu');
+            profileToggle.addEventListener('click', (e) => {
+                if(e.target.closest('.dropdown-item')) return;
+                profileMenu.classList.toggle('active');
+            });
+            document.addEventListener('click', (e) => {
+                if(!profileToggle.contains(e.target)) profileMenu.classList.remove('active');
+            });
+        });
+    </script>
+</body>
+</html>

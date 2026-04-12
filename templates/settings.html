@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings | SaaS Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .tabs { display: flex; gap: 1rem; border-bottom: 1px solid var(--glass-border); margin-bottom: 2rem; }
+        .tab-btn { background: none; border: none; padding: 1rem; color: var(--text-muted); font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .settings-card { background: rgba(100,100,100,0.05); padding: 2rem; border-radius: var(--border-radius-lg); border: 1px solid var(--glass-border); }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .profile-dropdown { position: relative; }
+        .dropdown-menu {
+            display: none; position: absolute; bottom: 100%; left: 0; background: var(--bg-color);
+            border: 1px solid var(--glass-border); border-radius: var(--border-radius-md); width: 100%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); padding: 0.5rem 0; margin-bottom: 0.5rem; z-index: 1000;
+        }
+        .dropdown-menu.active { display: block; }
+        .dropdown-item { display: block; padding: 0.75rem 1rem; color: var(--text-main); text-decoration: none; transition: background 0.2s; cursor: pointer; }
+        .dropdown-item:hover { background: rgba(100,100,100,0.1); }
+        .dropdown-item i { width: 20px; color: var(--text-muted); margin-right: 0.5rem; }
+    </style>
+</head>
+<body class="theme-wrapper">
+    <div class="background-effects"><div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div></div>
+    
+    <script>
+        window.CURRENT_USER = {id: {{ user.id }}, email: "{{ user.email }}", role: "{{ user.role }}", name: "{{ user.name or '' }}"};
+    </script>
+
+    <div class="app-container glassmorphism">
+        <aside class="sidebar">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="100" height="100" rx="20" fill="#0072CE"/>
+                    <path d="M25 50L50 25L75 50L50 75L25 50Z" fill="white"/>
+                </svg>
+                <span>Leumi ITSM</span>
+            </div>
+            <nav>
+                <a href="/"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
+                <a href="/analytics"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
+                <a href="/assets"><i class="fa-solid fa-server"></i> Assets</a>
+            </nav>
+            <div class="user-profile profile-dropdown" id="profileToggle" style="cursor: pointer; position:relative;">
+                <div class="avatar"><img src="https://ui-avatars.com/api/?name={{ user.name or user.email }}&background=0072CE&color=fff" alt="Avatar"></div>
+                <div class="info"><span class="name">{{ user.name or user.email.split('@')[0] }}</span><span class="role">{{ user.role }}</span></div>
+                <i class="fa-solid fa-chevron-up" style="color:var(--text-muted)"></i>
+                <div class="dropdown-menu" id="profileMenu">
+                    <a href="/settings" class="dropdown-item"><i class="fa-solid fa-gear"></i> Settings</a>
+                    <a href="/logout" class="dropdown-item" style="color:var(--accent-red)"><i class="fa-solid fa-arrow-right-from-bracket" style="color:var(--accent-red)"></i> Logout</a>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <h2>System Settings</h2>
+                <div class="actions">
+                    <button class="icon-btn" id="themeToggleBtn"><i class="fa-solid fa-moon"></i></button>
+                    <a href="/" class="primary-btn"><i class="fa-solid fa-arrow-left"></i> Back</a>
+                </div>
+            </header>
+
+            <div class="tabs">
+                <button class="tab-btn active" data-target="tab-sla">SLA & Options</button>
+                <button class="tab-btn" data-target="tab-smtp">SMTP Server</button>
+                <button class="tab-btn" data-target="tab-tags">Tags Manager</button>
+                <button class="tab-btn" data-target="tab-team">Team Management</button>
+            </div>
+
+            <!-- Tab: SLA -->
+            <div id="tab-sla" class="tab-content active settings-card">
+                <h3 style="margin-bottom:1.5rem">Target Resolution (Hours)</h3>
+                <form id="slaForm">
+                    <div class="form-row">
+                        <div class="form-group"><label>Critical SLA (Hours)</label><input type="number" id="sla_critical_hours" required></div>
+                        <div class="form-group"><label>High SLA (Hours)</label><input type="number" id="sla_high_hours" required></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Medium SLA (Hours)</label><input type="number" id="sla_medium_hours" required></div>
+                        <div class="form-group"><label>Low SLA (Hours)</label><input type="number" id="sla_low_hours" required></div>
+                    </div>
+                    <button type="submit" class="primary-btn">Save SLA</button>
+                </form>
+            </div>
+
+            <!-- Tab: SMTP -->
+            <div id="tab-smtp" class="tab-content settings-card">
+                <h3 style="margin-bottom:1.5rem">Email Server (For Invites)</h3>
+                <form id="smtpForm">
+                    <div class="form-row">
+                        <div class="form-group"><label>SMTP Server Host</label><input type="text" id="smtp_server" placeholder="smtp.leumi.co.il"></div>
+                        <div class="form-group"><label>SMTP Port</label><input type="number" id="smtp_port" placeholder="587"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Username / Email</label><input type="text" id="smtp_user" placeholder="no-reply@leumi.co.il"></div>
+                        <div class="form-group"><label>Password</label><input type="password" id="smtp_pass" placeholder="••••••••"></div>
+                    </div>
+                    <div class="form-group" style="display:flex;align-items:center;gap:0.5rem">
+                        <input type="checkbox" id="smtp_tls" style="width:auto">
+                        <label style="margin:0;cursor:pointer" for="smtp_tls">Use TLS/SSL Security</label>
+                    </div>
+                    <button type="submit" class="primary-btn">Save SMTP Settings</button>
+                </form>
+            </div>
+
+            <!-- Tab: Tags -->
+            <div id="tab-tags" class="tab-content settings-card">
+                <div class="flex-between" style="margin-bottom:1.5rem">
+                    <h3>Global Tags</h3>
+                    <form id="addTagForm" style="display:flex;gap:1rem;align-items:flex-end">
+                        <input type="text" id="newTagName" required style="padding:0.5rem" placeholder="UI/UX">
+                        <input type="color" id="newTagColor" value="#0072CE" style="padding:0; height:34px; width:40px; border:none; background:transparent">
+                        <button type="submit" class="primary-btn" style="padding:0.5rem 1rem">Add Tag</button>
+                    </form>
+                </div>
+                <table class="tickets-table">
+                    <thead><tr><th>Tag Preview</th><th>Name</th><th>Actions</th></tr></thead>
+                    <tbody id="tagsList"></tbody>
+                </table>
+            </div>
+
+            <!-- Tab: Team -->
+            <div id="tab-team" class="tab-content settings-card">
+                <div class="flex-between" style="margin-bottom:1.5rem">
+                    <h3>System Users</h3>
+                    <form id="inviteForm" style="display:flex;gap:1rem;align-items:flex-end">
+                        <input type="email" id="inviteEmail" required placeholder="New Employee Email" style="padding:0.5rem">
+                        <select id="inviteRole" style="padding:0.5rem"><option value="Member">Member</option><option value="Admin">Admin</option></select>
+                        <button type="submit" class="primary-btn" style="padding:0.5rem 1rem">Invite</button>
+                    </form>
+                </div>
+                <div id="inviteFeedback" style="margin-bottom:1rem"></div>
+                <table class="tickets-table">
+                    <thead><tr><th>Name / Email</th><th>Role</th><th>Actions</th></tr></thead>
+                    <tbody id="usersList"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Theme Toggle
+            if (localStorage.getItem('theme') === 'light') document.body.classList.add('light-theme');
+            document.getElementById('themeToggleBtn').addEventListener('click', () => {
+                document.body.classList.toggle('light-theme');
+                localStorage.setItem('theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
+            });
+
+            // Profile Dropdown
+            const profileToggle = document.getElementById('profileToggle');
+            const profileMenu = document.getElementById('profileMenu');
+            profileToggle.addEventListener('click', (e) => {
+                if(e.target.closest('.dropdown-item')) return;
+                profileMenu.classList.toggle('active');
+            });
+            document.addEventListener('click', (e) => {
+                if(!profileToggle.contains(e.target)) profileMenu.classList.remove('active');
+            });
+
+            // Tabs Logic
+            const tabs = document.querySelectorAll('.tab-btn');
+            tabs.forEach(btn => btn.addEventListener('click', () => {
+                tabs.forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.target).classList.add('active');
+            }));
+
+            // Fetch Settings
+            const setRes = await fetch('/api/settings');
+            const settings = await setRes.json();
+            for (const [k, v] of Object.entries(settings)) {
+                if (document.getElementById(k)) {
+                    if (document.getElementById(k).type === 'checkbox') document.getElementById(k).checked = v === 'true';
+                    else document.getElementById(k).value = v;
+                }
+            }
+
+            // Save General Settings
+            document.getElementById('slaForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await fetch('/api/settings', {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        sla_critical_hours: document.getElementById('sla_critical_hours').value,
+                        sla_high_hours: document.getElementById('sla_high_hours').value,
+                        sla_medium_hours: document.getElementById('sla_medium_hours').value,
+                        sla_low_hours: document.getElementById('sla_low_hours').value
+                    })
+                });
+                alert('SLA Saved!');
+            });
+
+            // Save SMTP Settings
+            document.getElementById('smtpForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await fetch('/api/settings', {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        smtp_server: document.getElementById('smtp_server').value,
+                        smtp_port: document.getElementById('smtp_port').value,
+                        smtp_user: document.getElementById('smtp_user').value,
+                        smtp_pass: document.getElementById('smtp_pass').value,
+                        smtp_tls: document.getElementById('smtp_tls').checked ? 'true' : 'false'
+                    })
+                });
+                alert('SMTP Settings Saved!');
+            });
+
+            // Tags Logic
+            const fetchTags = async () => {
+                const res = await fetch('/api/tags');
+                const tags = await res.json();
+                document.getElementById('tagsList').innerHTML = tags.map(t => `
+                    <tr>
+                        <td><span class="badge" style="background:${t.color}20; color:${t.color}; border:1px solid ${t.color}">${t.name}</span></td>
+                        <td>${t.name}</td>
+                        <td><button class="action-btn" onclick="deleteTag(${t.id})"><i class="fa-solid fa-trash" style="color:var(--accent-red)"></i></button></td>
+                    </tr>
+                `).join('');
+            };
+            fetchTags();
+
+            document.getElementById('addTagForm').addEventListener('submit', async(e) => {
+                e.preventDefault();
+                await fetch('/api/tags', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({name: document.getElementById('newTagName').value, color: document.getElementById('newTagColor').value})
+                });
+                document.getElementById('newTagName').value = '';
+                fetchTags();
+            });
+
+            window.deleteTag = async (id) => { if(confirm('Delete tag?')) { await fetch(`/api/tags/${id}`, {method:'DELETE'}); fetchTags(); } };
+
+            // Teams Logic
+            const fetchUsers = async () => {
+                const res = await fetch('/api/users');
+                const users = await res.json();
+                document.getElementById('usersList').innerHTML = users.map(u => `
+                    <tr>
+                        <td>${u.name || '-'} <br><small style="color:var(--text-muted)">${u.email}</small></td>
+                        <td>${u.role}</td>
+                        <td>${u.id !== window.CURRENT_USER.id ? `<button class="action-btn" onclick="deleteUser(${u.id})"><i class="fa-solid fa-trash"></i></button>` : 'You'}</td>
+                    </tr>
+                `).join('');
+            };
+            fetchUsers();
+
+            window.deleteUser = async (id) => { if(confirm('Delete user?')) { await fetch(`/api/users/${id}`, {method:'DELETE'}); fetchUsers(); } };
+
+            document.getElementById('inviteForm').addEventListener('submit', async(e) => {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                btn.disabled = true; btn.textContent = 'Sending...';
+                
+                const res = await fetch('/api/invite', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({email: document.getElementById('inviteEmail').value, role: document.getElementById('inviteRole').value})
+                });
+                const result = await res.json();
+                btn.disabled = false; btn.textContent = 'Invite';
+                
+                const fb = document.getElementById('inviteFeedback');
+                if(res.ok) fb.innerHTML = `<span style="color:var(--accent-green)"><i class="fa-solid fa-check"></i> ${result.message}</span> <br><small><a href="${result.url}" target="_blank" style="color:var(--primary);text-decoration:underline">Manual Invite Link (for debugging)</a></small>`;
+                else fb.innerHTML = `<span style="color:var(--accent-red)"><i class="fa-solid fa-triangle-exclamation"></i> ${result.error || result.message}</span>`;
+            });
+        });
+    </script>
+</body>
+</html>
