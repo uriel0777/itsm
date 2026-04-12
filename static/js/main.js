@@ -115,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>#${t.id}</td>
                 <td><strong style="display:block;margin-bottom:0.25rem">${t.title}</strong>${tagsHtml}</td>
                 <td><span style="display:block;font-size:0.85rem">${t.task_type}</span><small style="color:var(--text-muted)">Due: ${t.due_date||'N/A'}</small></td>
-                <td><span class="badge" style="background:${t.source === 'Webhook' ? 'rgba(245,158,11,0.2)' : 'rgba(100,100,100,0.2)'};color:${t.source === 'Webhook' ? 'var(--accent-orange)' : 'var(--text-muted)'}">${t.source || 'User'}</span></td>
                 <td><span class="badge priority-${t.priority}">${t.priority}</span></td>
                 <td><span class="badge status-${t.status.replace(' ', '-')}">${t.status}</span></td>
                 <td>${assigHtml}</td>
@@ -184,26 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
             statusGroup.style.display = 'block';
             statusInput.value = data.status;
             
-            const whSection = document.getElementById('webhookSection');
-            if (data.source === 'Webhook') {
-                whSection.style.display = 'block';
-                try {
-                    document.getElementById('webhookPayload').textContent = JSON.stringify(JSON.parse(data.payload), null, 2);
-                } catch(e) { document.getElementById('webhookPayload').textContent = data.payload || 'No payload data'; }
-                
-                const rbSection = document.getElementById('runbookSection');
-                if (data.runbook) {
-                    rbSection.style.display = 'block';
-                    document.getElementById('runbookGuide').textContent = data.runbook.guide || 'No manual guide provided.';
-                    if (data.runbook.resolution_script) {
-                        document.getElementById('runbookScript').style.display = 'block';
-                        document.getElementById('runbookScript').textContent = data.runbook.resolution_script;
-                    } else document.getElementById('runbookScript').style.display = 'none';
-                } else rbSection.style.display = 'none';
-            } else {
-                whSection.style.display = 'none';
-            }
-            
             // Set multi select
             Array.from(tagsInput.options).forEach(opt => {
                 opt.selected = data.tags.some(t => t.id == opt.value);
@@ -213,7 +192,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ticketForm.reset();
             ticketIdInput.value = '';
             statusGroup.style.display = 'none';
-            document.getElementById('webhookSection').style.display = 'none';
             statusInput.value = 'New';
             taskTypeInput.value = 'Short-term';
             updateDateEnforcement();

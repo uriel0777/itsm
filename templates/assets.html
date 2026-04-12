@@ -95,9 +95,8 @@
                     <table class="tickets-table">
                         <thead>
                             <tr>
-                                <th>Asset Name</th>
-                                <th>Type</th>
-                                <th>Target (IP/URL)</th>
+                                <th>Server Name</th>
+                                <th>IP / Target</th>
                                 <th>Description</th>
                                 <th>Connection</th>
                                 {% if user.role == 'Admin' %}<th>Actions</th>{% endif %}
@@ -126,16 +125,8 @@
                         <input type="text" id="assetName" required placeholder="e.g. DB_Production_1">
                     </div>
                     <div class="form-group">
-                        <label>Target (IP or URL or UNC Path)</label>
+                        <label>IP or Hostname</label>
                         <input type="text" id="assetIp" required placeholder="192.168.1.10">
-                    </div>
-                    <div class="form-group">
-                        <label>Asset Type</label>
-                        <select id="assetType" required>
-                            <option value="RDP">RDP (Remote Desktop)</option>
-                            <option value="URL">URL / Web Service</option>
-                            <option value="SMB">SMB Network Share</option>
-                        </select>
                     </div>
                     <div class="form-group">
                         <label>Description (Optional)</label>
@@ -178,18 +169,14 @@
                 document.getElementById('assetsList').innerHTML = assets.map(a => `
                     <tr>
                         <td><strong>${a.name}</strong></td>
-                        <td><span class="badge" style="background:rgba(100,100,100,0.1); border:1px solid var(--glass-border)">${a.asset_type || 'RDP'}</span></td>
                         <td>${a.ip_target}</td>
                         <td style="color:var(--text-muted)">${a.description || '-'}</td>
                         <td>
-                            ${a.asset_type === 'URL' 
-                                ? '<a href="' + a.ip_target + '" target="_blank" class="badge status-New" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-link"></i> Open Link</a>' 
-                                : a.asset_type === 'SMB' 
-                                ? '<a href="smb://' + a.ip_target.replace(/\\\\/g, '/') + '" class="badge status-In-Progress" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-folder"></i> Open Share</a>' 
-                                : '<a href="rdp://' + a.ip_target + '" class="badge status-New" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.5rem;"><i class="fa-solid fa-desktop"></i> Connect RDP</a>'
-                            }
+                            <a href="rdp://${a.ip_target}" class="badge status-New" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.5rem;">
+                                <i class="fa-solid fa-desktop"></i> Connect RDP
+                            </a>
                         </td>
-                        ${window.CURRENT_USER.role === 'Admin' ? '<td><button class="action-btn" onclick="deleteAsset(' + a.id + ')"><i class="fa-solid fa-trash" style="color:var(--accent-red)"></i></button></td>' : ''}
+                        ${window.CURRENT_USER.role === 'Admin' ? `<td><button class="action-btn" onclick="deleteAsset(${a.id})"><i class="fa-solid fa-trash" style="color:var(--accent-red)"></i></button></td>` : ''}
                     </tr>
                 `).join('');
             }
@@ -209,8 +196,7 @@
                         body: JSON.stringify({
                             name: document.getElementById('assetName').value,
                             ip_target: document.getElementById('assetIp').value,
-                            description: document.getElementById('assetDesc').value,
-                            asset_type: document.getElementById('assetType').value
+                            description: document.getElementById('assetDesc').value
                         })
                     });
                     modal.classList.remove('active');

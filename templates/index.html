@@ -111,7 +111,6 @@
                                 <th>ID</th>
                                 <th>Title / Tags</th>
                                 <th>Type & Due Date</th>
-                                <th>Source</th>
                                 <th>Priority</th>
                                 <th>Status</th>
                                 <th>Assignee</th>
@@ -141,20 +140,6 @@
                         <div class="form-group"><label>Task Type</label><select id="task_type" required><option value="Short-term">Short-term Task (Max 7 Days)</option><option value="Long-term">Long-term Project (Max 60 Days)</option></select></div>
                         <div class="form-group"><label>Due Date</label><input type="date" id="due_date" required></div>
                     </div>
-                    
-                    <div id="webhookSection" style="display:none; background:var(--glass-bg); padding: 1rem; border-radius:var(--border-radius-sm); margin-bottom:1.25rem; border:1px solid var(--accent-orange)">
-                        <h4 style="color:var(--accent-orange); margin-bottom: 0.5rem; font-size:0.95rem;"><i class="fa-solid fa-robot"></i> Automated Alert Payload</h4>
-                        <pre id="webhookPayload" style="font-size:0.75rem; overflow-x:auto; background:#0f172a; padding:0.75rem; border-radius:4px; margin-bottom:1rem; color:#a7f3d0; border:1px solid var(--glass-border);"></pre>
-                        
-                        <div id="runbookSection" style="display:none; border-top:1px solid var(--glass-border); padding-top:1rem;">
-                            <h4 style="color:var(--accent-blue); margin-bottom: 0.5rem; font-size:0.95rem;"><i class="fa-solid fa-book"></i> Recommended Runbook</h4>
-                            <div id="runbookGuide" style="font-size:0.85rem; margin-bottom:0.75rem; color:var(--text-main); white-space: pre-wrap;"></div>
-                            <div style="position:relative">
-                                <code id="runbookScript" style="display:block; background:#000; padding:0.75rem; border-radius:4px; font-family:monospace; color:#38bdf8; overflow-x:auto; white-space: pre-wrap; font-size:0.8rem"></code>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="form-group"><label>Detailed Description</label><textarea id="description" rows="3" placeholder="Add any details..."></textarea></div>
                     <div class="form-group"><label>Select Tags</label><select id="tags" multiple style="height: 60px;"></select></div>
                     <div class="form-row">

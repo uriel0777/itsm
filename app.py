@@ -5,8 +5,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import uuid
 from datetime import datetime
-import json
-import re
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -59,24 +57,9 @@ class Asset(db.Model):
     name = db.Column(db.String(100), nullable=False)
     ip_target = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    asset_type = db.Column(db.String(50), default='RDP')
-    expiry_date = db.Column(db.DateTime, nullable=True)
     
     def to_dict(self):
-        return {
-            'id': self.id, 'name': self.name, 'ip_target': self.ip_target, 
-            'description': self.description, 'asset_type': self.asset_type,
-            'expiry_date': self.expiry_date.strftime('%Y-%m-%d') if self.expiry_date else None
-        }
-
-class Runbook(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    alert_pattern = db.Column(db.String(255), nullable=False)
-    resolution_script = db.Column(db.Text, nullable=True)
-    guide = db.Column(db.Text, nullable=True)
-
-    def to_dict(self):
-        return {'id': self.id, 'alert_pattern': self.alert_pattern, 'resolution_script': self.resolution_script, 'guide': self.guide}
+        return {'id': self.id, 'name': self.name, 'ip_target': self.ip_target, 'description': self.description}
 
 ticket_tags = db.Table('ticket_tags',
     db.Column('ticket_id', db.Integer, db.ForeignKey('ticket.id'), primary_key=True),
@@ -90,29 +73,21 @@ class Ticket(db.Model):
     priority = db.Column(db.String(20), nullable=False, default='Medium') 
     status = db.Column(db.String(20), nullable=False, default='New') 
     task_type = db.Column(db.String(50), nullable=False, default='Short-term') 
-    source = db.Column(db.String(50), default='User')
-    payload = db.Column(db.Text, nullable=True)
     due_date = db.Column(db.DateTime, nullable=True)
     assignee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    runbook_id = db.Column(db.Integer, db.ForeignKey('runbook.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    resolved_at = db.Column(db.DateTime, nullable=True)
     
     assignee = db.relationship('User', backref=db.backref('tickets', lazy=True))
-    runbook = db.relationship('Runbook', backref=db.backref('tickets', lazy=True))
     tags = db.relationship('Tag', secondary=ticket_tags, lazy='subquery', backref=db.backref('tickets', lazy=True))
 
     def to_dict(self):
         return {
             'id': self.id, 'title': self.title, 'description': self.description,
             'priority': self.priority, 'status': self.status, 'task_type': self.task_type,
-            'source': self.source, 'payload': self.payload,
             'due_date': self.due_date.strftime('%Y-%m-%d') if self.due_date else None,
             'assignee': self.assignee.name if self.assignee else None, 'assignee_id': self.assignee_id,
-            'runbook': self.runbook.to_dict() if self.runbook else None,
             'tags': [tag.to_dict() for tag in self.tags],
-            'created_at': self.created_at.strftime('%Y-%m-%dT%H:%M:%SZ'),
-            'resolved_at': self.resolved_at.strftime('%Y-%m-%dT%H:%M:%SZ') if self.resolved_at else None
+            'created_at': self.created_at.strftime('%Y-%m-%dT%H:%M:%SZ')
         }
 
 @login_manager.user_loader
@@ -135,44 +110,7 @@ with app.app_context():
     for k, v in default_settings.items():
         if not SystemSetting.query.filter_by(key=k).first(): db.session.add(SystemSetting(key=k, value=v))
     if Tag.query.count() == 0:
-        db.session.add_all([Tag(name='DB Issue', color='#ef4444'), Tag(name='Server', color='#8b5cf6'), Tag(name='UI/UX', color='#0ea5e9'), Tag(name='Auto-generated', color='#f59e0b')])
-    
-    if Asset.query.count() == 0:
-        initial_assets = [
-            # EKSA
-            Asset(name='Banker Reply Indicator', ip_target='https://bll-crm-prd.hq.il.leumi/banker-reply-indicator/vitality', asset_type='URL', description='Red Bubble'),
-            Asset(name='Banker Reply Update', ip_target='https://bll-crm-prd.hq.il.leumi/banker-reply-update/vitality', asset_type='URL'),
-            Asset(name='OpenAI Chat Service', ip_target='https://bll-openai-prd.hq.il.leumi/openai/vitality', asset_type='URL'),
-            Asset(name='Retrieval Transaction', ip_target='https://bll-crm-prd.hq.il.leumi/retrieval-transaction/vitality', asset_type='URL'),
-            Asset(name='CRM Events Manager', ip_target='https://bll-crm-prd.hq.il.leumi/crm-events-manager/vitality', asset_type='URL'),
-            Asset(name='OCR Pub', ip_target='https://bll-stringout-prd.hq.il.leumi/ocr-pub/vitality', asset_type='URL'),
-            Asset(name='OCR Data Management', ip_target='https://bll-stringout-prd.hq.il.leumi/ocr-data-management/vitality', asset_type='URL'),
-            
-            # MC Servers
-            Asset(name='MC Node 1', ip_target='10.235.143.131', asset_type='RDP'),
-            Asset(name='MC Node 2', ip_target='10.235.143.132', asset_type='RDP'),
-            Asset(name='MC Node 3', ip_target='10.235.143.140', asset_type='RDP'),
-            Asset(name='MC Node 4', ip_target='10.235.143.141', asset_type='RDP'),
-            Asset(name='MC Node 5', ip_target='10.235.143.146', asset_type='RDP'),
-            Asset(name='MC Node 6', ip_target='10.235.143.147', asset_type='RDP'),
-            Asset(name='MC Node 7', ip_target='10.235.143.152', asset_type='RDP'),
-            Asset(name='MC Node 8', ip_target='10.235.143.153', asset_type='RDP'),
-
-            # SMB Shares
-            Asset(name='CRM SF ETL Shared', ip_target='\\\\crmfs\\CRM_SF_ETL\\Informatica\\infa_shared', asset_type='SMB'),
-            Asset(name='InfaSrv C Drive', ip_target='\\\\infasrv\\c$', asset_type='SMB'),
-            Asset(name='InfaSrv E Drive', ip_target='\\\\infasrv\\e$', asset_type='SMB'),
-            Asset(name='Vitality Checker Server', ip_target='\\\\leumisrv1\\Data2\\SFVersions\\VitalityChecker', asset_type='SMB', description='Leumisrv1')
-        ]
-        db.session.add_all(initial_assets)
-
-    if Runbook.query.count() == 0:
-        db.session.add_all([
-            Runbook(alert_pattern='.*LOW SPACE.*', guide='1. Connect to the server via Asset Explorer.\n2. Open Disk Cleanup.\n3. Clear Temp folders.', resolution_script='powershell.exe -Command "Remove-Item -Path $env:TEMP\\* -Recurse -Force"'),
-            Runbook(alert_pattern='.*Out of Memory.*', guide='1. Check Node usage.\n2. Restart specific node services.', resolution_script='taskkill /F /FI "MEMUSAGE gt 2000000"'),
-            Runbook(alert_pattern='.*Legacy Tool Errors.*', guide='1. RDP to leumisrv1.\n2. Check latest logs in \\Data2\\SFVersions\\VitalityChecker\\logs.')
-        ])
-    
+        db.session.add_all([Tag(name='DB Issue', color='#ef4444'), Tag(name='Server', color='#8b5cf6'), Tag(name='UI/UX', color='#0ea5e9')])
     db.session.commit()
 
 # --- Auth ---
@@ -335,7 +273,7 @@ def delete_tag(id):
 def manage_assets():
     if request.method == 'GET': return jsonify([a.to_dict() for a in Asset.query.all()])
     if current_user.role != 'Admin': return jsonify({'error': 'Unauthorized'}), 403
-    a = Asset(name=request.json.get('name'), ip_target=request.json.get('ip_target'), description=request.json.get('description'), asset_type=request.json.get('asset_type', 'RDP'))
+    a = Asset(name=request.json.get('name'), ip_target=request.json.get('ip_target'), description=request.json.get('description'))
     db.session.add(a)
     db.session.commit()
     return jsonify(a.to_dict()), 201
@@ -355,8 +293,7 @@ def tickets():
     data = request.json
     due = datetime.strptime(data.get('due_date'), '%Y-%m-%d') if data.get('due_date') else None
     t = Ticket(title=data.get('title'), description=data.get('description', ''), priority=data.get('priority', 'Medium'),
-        status=data.get('status', 'New'), task_type=data.get('task_type', 'Short-term'), source=data.get('source', 'User'),
-        payload=data.get('payload', ''), due_date=due, assignee_id=data.get('assignee_id', None))
+        status=data.get('status', 'New'), task_type=data.get('task_type', 'Short-term'), due_date=due, assignee_id=data.get('assignee_id', None))
     if data.get('tag_ids'): t.tags.extend(Tag.query.filter(Tag.id.in_(data['tag_ids'])).all())
     db.session.add(t)
     db.session.commit()
@@ -393,49 +330,6 @@ def get_stats():
         name = t.assignee.name if t.assignee else 'Unassigned'
         ba[name] = ba.get(name, 0) + 1
     return jsonify({'status': bs, 'assignee': ba, 'total': len(tickets)})
-
-@app.route('/api/webhooks/morning-check', methods=['POST'])
-def webhook_morning_check():
-    data = request.json
-    incident_key = data.get('incident_key', 'Generic Incident')
-    status_ind = data.get('status', 'ERROR')
-    payload_str = json.dumps(data)
-    
-    existing_ticket = Ticket.query.filter(Ticket.title == incident_key, Ticket.status != 'Resolved').first()
-    
-    if status_ind == 'OK':
-        if existing_ticket:
-            existing_ticket.status = 'Resolved'
-            existing_ticket.resolved_at = datetime.utcnow()
-            db.session.commit()
-            return jsonify({'message': f'Incident {incident_key} resolved automatically.'})
-        return jsonify({'message': 'No open incidents found for this key.'})
-    else:
-        if existing_ticket:
-            existing_ticket.payload = payload_str
-            db.session.commit()
-            return jsonify({'message': 'Updated existing incident payload.'})
-            
-        t = Ticket(title=incident_key, description=data.get('description', 'Automated Alert'), 
-                   priority=data.get('priority', 'High'), source='Webhook', payload=payload_str)
-                   
-        auto_tag = Tag.query.filter_by(name='Auto-generated').first()
-        if auto_tag: t.tags.append(auto_tag)
-            
-        runbooks = Runbook.query.all()
-        for rb in runbooks:
-            if re.search(rb.alert_pattern, incident_key, re.IGNORECASE):
-                t.runbook_id = rb.id
-                break
-                
-        db.session.add(t)
-        db.session.commit()
-        return jsonify({'message': f'Incident {incident_key} created successfully.'}), 201
-
-@app.route('/api/runbooks', methods=['GET'])
-@login_required
-def get_runbooks():
-    return jsonify([r.to_dict() for r in Runbook.query.all()])
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
