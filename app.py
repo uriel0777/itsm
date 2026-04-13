@@ -11,11 +11,9 @@ def create_app(config_class=Config):
 
     from routes_web import web_bp
     from routes_api import api_bp
-    from webhook import webhook_bp
 
     app.register_blueprint(web_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
-    app.register_blueprint(webhook_bp)
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -35,7 +33,7 @@ def create_app(config_class=Config):
         default_settings = {
             'sla_critical_hours': '1', 'sla_high_hours': '4',
             'sla_medium_hours': '24', 'sla_low_hours': '48',
-            'smtp_server': '', 'smtp_port': '587', 'smtp_user': '', 'smtp_pass': '', 'smtp_tls': 'true'
+            'smtp_server': '127.0.0.1', 'smtp_port': '25', 'smtp_user': '', 'smtp_pass': '', 'smtp_tls': 'false'
         }
         for k, v in default_settings.items():
             if not SystemSetting.query.filter_by(key=k).first(): db.session.add(SystemSetting(key=k, value=v))

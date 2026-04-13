@@ -4,9 +4,11 @@ import uuid
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import os
+import subprocess
 from datetime import datetime, timedelta
 from extensions import db
-from models import User, Invite, SystemSetting, Tag, Asset, Ticket
+from models import User, Invite, SystemSetting, Tag, Asset, Ticket, Runbook
 
 api_bp = Blueprint('api', __name__)
 
@@ -25,7 +27,11 @@ def send_email_invite(to_email, invite_url):
         server = smtplib.SMTP(sets.get('smtp_server'), int(sets.get('smtp_port')))
         server.ehlo()
         if sets.get('smtp_tls') == 'true': server.starttls()
-        server.login(sets.get('smtp_user'), sets.get('smtp_pass'))
+        
+        # In isolated environments, internal relay doesn't use auth
+        if sets.get('smtp_user') and sets.get('smtp_pass'):
+            server.login(sets.get('smtp_user'), sets.get('smtp_pass'))
+            
         server.send_message(msg)
         server.quit()
         return True, "Success"
@@ -190,3 +196,42 @@ def get_stats():
         name = t.assignee.name if t.assignee else 'Unassigned'
         ba[name] = ba.get(name, 0) + 1
     return jsonify({'status': bs, 'assignee': ba, 'total': len(tickets)})
+
+@api_bp.route('/runbooks', methods=['GET', 'POST'])
+@login_required
+def manage_runbooks():
+    if request.method == 'GET':
+        return jsonify([r.to_dict() for r in Runbook.query.all()])
+    if current_user.role != 'Admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    rb = Runbook(name=request.json.get('name'), description=request.json.get('description'), file_path=request.json.get('file_path'))
+    db.session.add(rb)
+    db.session.commit()
+    return jsonify(rb.to_dict()), 201
+
+@api_bp.route('/runbooks/<int:id>/execute', methods=['POST'])
+@login_required
+def execute_runbook(id):
+    if current_user.role != 'Admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    rb = Runbook.query.get_or_404(id)
+    
+    path = rb.file_path
+    if not os.path.exists(path):
+        return jsonify({'error': 'File not found at specified network path. Ensure IIS has access.', 'path': path}), 404
+        
+    try:
+        ext = os.path.splitext(path)[1].lower()
+        cmd = [path] # Defaults for .bat/.cmd/.exe
+        if ext == '.py': cmd = ['python', path]
+        elif ext == '.ps1': cmd = ['powershell', '-ExecutionPolicy', 'Bypass', '-File', path]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        return jsonify({
+            'success': result.returncode == 0,
+            'stdout': result.stdout,
+            'stderr': result.stderr,
+            'returncode': result.returncode
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

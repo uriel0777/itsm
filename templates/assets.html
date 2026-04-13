@@ -108,6 +108,25 @@
                     </table>
                 </div>
             </div>
+
+            <div class="tickets-section" style="margin-top: 2rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                    <h2>Network Runbooks (Scripts)</h2>
+                </div>
+                <div class="table-container">
+                    <table class="tickets-table">
+                        <thead>
+                            <tr>
+                                <th>Script Name</th>
+                                <th>Network Path (UNC)</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="runbooksList"></tbody>
+                    </table>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -181,6 +200,36 @@
                 `).join('');
             }
             loadAssets();
+
+            async function loadRunbooks() {
+                const res = await fetch('/api/runbooks');
+                const runbooks = await res.json();
+                document.getElementById('runbooksList').innerHTML = runbooks.map(r => `
+                    <tr>
+                        <td><strong>${r.name}</strong></td>
+                        <td style="font-family:monospace; font-size:0.9em; color:var(--text-main)">${r.file_path}</td>
+                        <td style="color:var(--text-muted)">${r.description || '-'}</td>
+                        <td>
+                            <button class="primary-btn" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="executeRunbook(${r.id})">
+                                <i class="fa-solid fa-play"></i> Run
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            loadRunbooks();
+
+            window.executeRunbook = async (id) => {
+                if(confirm("Execute this script on the IIS Server from the network path?")) {
+                    const res = await fetch(`/api/runbooks/${id}/execute`, {method:'POST'});
+                    const data = await res.json();
+                    if(data.success) {
+                        alert("Execution Complete!\\nOutput:\\n" + data.stdout);
+                    } else {
+                        alert("Execution Failed!\\nError:\\n" + (data.stderr || data.error));
+                    }
+                }
+            };
 
             // Admin Actions
             if(window.CURRENT_USER.role === 'Admin') {

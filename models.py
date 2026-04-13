@@ -42,6 +42,15 @@ class Asset(db.Model):
     def to_dict(self):
         return {'id': self.id, 'name': self.name, 'ip_target': self.ip_target, 'description': self.description, 'launcher_url': self.launcher_url}
 
+class Runbook(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    file_path = db.Column(db.String(500), nullable=False) # UNC path e.g., \\server\share\script.bat
+    
+    def to_dict(self):
+        return {'id': self.id, 'name': self.name, 'description': self.description, 'file_path': self.file_path}
+
 ticket_tags = db.Table('ticket_tags',
     db.Column('ticket_id', db.Integer, db.ForeignKey('ticket.id'), primary_key=True),
     db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True)
