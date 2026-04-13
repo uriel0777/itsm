@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# Environment variables
+.env
+.flaskenv
+
+# Database
+instance/
+*.sqlite3
+*.db
+
+# OS Files
+.DS_Store
+
+# Deployment / Logs
+*.zip
+*.log
+offline_packages/
+dest/
